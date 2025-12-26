@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #00ff87;
+  --primary-dark: #00cc6a;
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #1a1a1a;
+  --border: #222222;
+  --border-light: #333333;
+}
+
+* {
+  border-radius: 0 !important;
+}
+
+body {
+  background-color: var(--background);
+  font-family: var(--font-mono), 'IBM Plex Mono', monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Sharp rectangular design - no border radius anywhere */
+.card {
+  @apply bg-[#111] border border-[#222] p-6;
+}
+
+/* Button styles - rectangular */
+.btn-primary {
+  @apply bg-[#00ff87] text-black font-medium px-6 py-3;
+  @apply hover:bg-[#00cc6a] transition-colors duration-150;
+  @apply focus:outline-none focus:ring-1 focus:ring-[#00ff87] focus:ring-offset-1 focus:ring-offset-[#0a0a0a];
+}
+
+.btn-secondary {
+  @apply bg-transparent text-gray-400 px-6 py-3 border border-[#333];
+  @apply hover:border-[#555] hover:text-white transition-colors duration-150;
+  @apply focus:outline-none focus:ring-1 focus:ring-gray-500;
+}
+
+/* Input styles - rectangular */
+.input {
+  @apply w-full bg-[#111] border border-[#333] px-4 py-3;
+  @apply text-white placeholder-gray-600;
+  @apply focus:outline-none focus:border-[#00ff87];
+  @apply transition-colors duration-150;
+}
+
+/* Textarea styles - rectangular */
+.textarea {
+  @apply w-full bg-[#111] border border-[#333] px-4 py-3;
+  @apply text-white placeholder-gray-600 resize-none;
+  @apply focus:outline-none focus:border-[#00ff87];
+  @apply transition-colors duration-150;
+  min-height: 100px;
+}
+
+/* Animation for loading states */
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: var(--primary);
+  }
+  50% {
+    border-color: transparent;
+  }
+}
+
+.pulse-border {
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+/* Language color classes */
+.lang-c { --lang-color: #00d9ff; }
+.lang-python { --lang-color: #00ff87; }
+.lang-cpp { --lang-color: #bf5af2; }
+.lang-java { --lang-color: #ffd60a; }
+
+/* Typography */
+.font-code {
+  font-family: var(--font-mono), 'IBM Plex Mono', monospace;
+}
+
+.font-sans {
+  font-family: var(--font-sans), 'IBM Plex Sans', sans-serif;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(0, 255, 135, 0.3);
+  color: white;
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 1px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Custom slider styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: #222;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #00ff87;
+  cursor: pointer;
+  border: 2px solid #0a0a0a;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #00ff87;
+  cursor: pointer;
+  border: 2px solid #0a0a0a;
+  border-radius: 0;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px rgba(0, 255, 135, 0.3);
+}
