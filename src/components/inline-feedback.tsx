@@ -65,7 +65,7 @@ export function InlineFeedback({
     });
     
     // Also add missing concepts as hints
-    return [...new Set([...concepts, ...missingConcepts])].slice(0, 5);
+    return Array.from(new Set([...concepts, ...missingConcepts])).slice(0, 5);
   };
 
   const getStatusConfig = () => {

@@ -102,7 +102,7 @@ export function InlineCodeViewer({
         concepts.push(phrase);
       }
     }
-    return [...new Set(concepts)].slice(0, 4);
+    return Array.from(new Set(concepts)).slice(0, 4);
   };
   
   // Focus input when current line changes

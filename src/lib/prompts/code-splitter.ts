@@ -142,7 +142,7 @@ export function parseTeachingUnits(response: string): TeachingUnit[] {
       difficulty: unit.difficulty ?? 'beginner',
       keyConcepts: unit.keyConcepts ?? [],
       commonMisconceptions: unit.commonMisconceptions ?? [],
-      pythonEquivalent: unit.pythonEquivalent ?? null,
+      pythonEquivalent: unit.pythonEquivalent ?? undefined,
     }));
   } catch (error) {
     console.error('Failed to parse teaching units:', error);
