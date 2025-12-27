@@ -36,16 +36,82 @@ interface EvaluationResult {
   hintForRetry: string | null;
 }
 
-// Simple mock evaluation (in production, this calls the AI)
+// Synonym map for more lenient evaluation
+const conceptSynonyms: Record<string, string[]> = {
+  // Input/Output
+  'input': ['input', 'ask', 'asks', 'read', 'reads', 'get', 'gets', 'receive', 'receives', 'prompt', 'prompts', 'request', 'enter', 'enters', 'type', 'types', 'scanf', 'cin', 'readline', 'user input'],
+  'output': ['output', 'print', 'prints', 'display', 'displays', 'show', 'shows', 'write', 'writes', 'printf', 'cout', 'log', 'logs'],
+  
+  // Variables & Assignment
+  'variable': ['variable', 'var', 'value', 'store', 'stores', 'stored', 'save', 'saves', 'saved', 'hold', 'holds', 'container', 'name', 'named', 'called'],
+  'assignment': ['assign', 'assigns', 'assignment', 'set', 'sets', 'store', 'stores', 'save', 'saves', 'put', 'puts', 'give', 'gives', 'equal', 'equals', '='],
+  'declaration': ['declare', 'declares', 'declaration', 'create', 'creates', 'define', 'defines', 'initialize', 'initializes', 'make', 'makes', 'new'],
+  
+  // Data Types
+  'integer': ['integer', 'int', 'number', 'numeric', 'whole number', 'digit'],
+  'string': ['string', 'text', 'word', 'words', 'character', 'characters', 'char', 'message', 'name', 'sentence'],
+  'float': ['float', 'double', 'decimal', 'floating', 'real number', 'fractional'],
+  'boolean': ['boolean', 'bool', 'true', 'false', 'flag', 'condition', 'yes', 'no'],
+  'array': ['array', 'list', 'collection', 'elements', 'items', 'sequence', 'multiple'],
+  'pointer': ['pointer', 'address', 'reference', 'memory', 'points to', 'location'],
+  
+  // Control Flow
+  'condition': ['condition', 'conditional', 'if', 'check', 'checks', 'test', 'tests', 'compare', 'compares', 'when', 'whether'],
+  'loop': ['loop', 'loops', 'iterate', 'iterates', 'repeat', 'repeats', 'cycle', 'cycles', 'for', 'while', 'each', 'every', 'again'],
+  'branch': ['branch', 'else', 'otherwise', 'alternative', 'different path'],
+  
+  // Functions
+  'function': ['function', 'method', 'procedure', 'routine', 'call', 'calls', 'invoke', 'invokes', 'run', 'runs', 'execute', 'executes'],
+  'return': ['return', 'returns', 'give back', 'result', 'output', 'produce', 'produces', 'send back'],
+  'parameter': ['parameter', 'argument', 'arg', 'param', 'input', 'pass', 'passes', 'passed', 'given'],
+  
+  // Operations
+  'calculation': ['calculate', 'calculates', 'calculation', 'compute', 'computes', 'math', 'arithmetic', 'add', 'adds', 'subtract', 'multiply', 'divide', 'sum', 'total', 'result'],
+  'comparison': ['compare', 'compares', 'comparison', 'check', 'equal', 'greater', 'less', 'same', 'different', 'match', 'matches'],
+  'increment': ['increment', 'increase', 'add one', 'plus one', '++', 'go up'],
+  'decrement': ['decrement', 'decrease', 'minus one', 'subtract one', '--', 'go down'],
+};
+
+// More lenient evaluation with synonym matching
 function mockEvaluate(userExplanation: string, unit: TeachingUnit): EvaluationResult {
   const explanation = userExplanation.toLowerCase();
   const matchedConcepts: string[] = [];
   const missingConcepts: string[] = [];
 
-  // Check for key concepts
+  // Check for key concepts using synonyms
   unit.keyConcepts.forEach((concept) => {
-    const words = concept.toLowerCase().split(" ");
-    const found = words.some((word) => explanation.includes(word));
+    const conceptLower = concept.toLowerCase();
+    let found = false;
+    
+    // Direct match first
+    if (explanation.includes(conceptLower)) {
+      found = true;
+    }
+    
+    // Check synonyms
+    if (!found) {
+      const synonyms = conceptSynonyms[conceptLower] || [];
+      found = synonyms.some(synonym => {
+        // For multi-word synonyms, check exact phrase
+        if (synonym.includes(' ')) {
+          return explanation.includes(synonym);
+        }
+        // For single words, check word boundaries (avoid partial matches)
+        const wordRegex = new RegExp(`\\b${synonym}\\b`, 'i');
+        return wordRegex.test(explanation);
+      });
+    }
+    
+    // Also check if any word in the concept appears
+    if (!found) {
+      const conceptWords = conceptLower.split(' ');
+      found = conceptWords.some(word => {
+        if (word.length < 3) return false;
+        const wordRegex = new RegExp(`\\b${word}\\b`, 'i');
+        return wordRegex.test(explanation);
+      });
+    }
+    
     if (found) {
       matchedConcepts.push(concept);
     } else {
@@ -53,36 +119,57 @@ function mockEvaluate(userExplanation: string, unit: TeachingUnit): EvaluationRe
     }
   });
 
-  const matchRatio = matchedConcepts.length / unit.keyConcepts.length;
+  // Calculate match ratio
+  const matchRatio = unit.keyConcepts.length > 0 
+    ? matchedConcepts.length / unit.keyConcepts.length 
+    : 0;
 
-  if (matchRatio >= 0.6) {
+  // Bonus: Check if explanation is substantial (not too short)
+  const wordCount = explanation.split(/\s+/).filter(w => w.length > 0).length;
+  const isSubstantial = wordCount >= 5;
+  
+  // Bonus: Check for action verbs that show understanding
+  const hasActionVerb = /\b(does|performs|creates|stores|saves|reads|writes|prints|displays|asks|gets|returns|loops|checks|compares|calls|runs|executes|assigns|declares|initializes)\b/i.test(explanation);
+  
+  // Adjust thresholds based on bonuses
+  let adjustedRatio = matchRatio;
+  if (isSubstantial && hasActionVerb) {
+    adjustedRatio = Math.min(1, matchRatio + 0.2); // Bonus for good explanation structure
+  } else if (isSubstantial || hasActionVerb) {
+    adjustedRatio = Math.min(1, matchRatio + 0.1);
+  }
+
+  // More lenient thresholds
+  if (adjustedRatio >= 0.4 || (matchedConcepts.length >= 2 && isSubstantial)) {
     return {
       result: "Correct",
-      confidenceScore: Math.round(70 + matchRatio * 30),
+      confidenceScore: Math.round(70 + adjustedRatio * 30),
       reason: "Your explanation captures the key concepts well!",
       matchedConcepts,
       missingConcepts,
       encouragement: "Great job! You demonstrated good understanding.",
       hintForRetry: null,
     };
-  } else if (matchRatio >= 0.3) {
+  } else if (adjustedRatio >= 0.2 || matchedConcepts.length >= 1) {
     return {
       result: "Partially Correct",
-      confidenceScore: Math.round(40 + matchRatio * 30),
-      reason: "You got some concepts right, but missed a few important details.",
+      confidenceScore: Math.round(40 + adjustedRatio * 30),
+      reason: "You're on the right track! Your explanation covers some concepts.",
       matchedConcepts,
       missingConcepts,
-      encouragement: "You're on the right track! Try to be more specific.",
-      hintForRetry: `Think about: ${missingConcepts.slice(0, 2).join(", ")}`,
+      encouragement: "Good thinking! Try to mention a bit more about what happens.",
+      hintForRetry: missingConcepts.length > 0 
+        ? `Also consider: ${missingConcepts.slice(0, 2).join(", ")}`
+        : null,
     };
   } else {
     return {
       result: "Incorrect",
-      confidenceScore: Math.round(matchRatio * 40),
-      reason: "Your explanation doesn't quite capture what this code does.",
+      confidenceScore: Math.round(adjustedRatio * 40),
+      reason: "Your explanation needs more detail about what this code does.",
       matchedConcepts,
       missingConcepts,
-      encouragement: "Don't worry - this is how we learn! Take another look at the code.",
+      encouragement: "Don't worry - try describing the action step by step!",
       hintForRetry: `What action does this ${unit.unitType.replace("_", " ")} perform?`,
     };
   }
