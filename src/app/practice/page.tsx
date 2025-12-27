@@ -200,13 +200,55 @@ function PracticeContent() {
   const [showReference, setShowReference] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  
+  // Energy system state
+  const [energy, setEnergy] = useState<number>(5);
+  const [correctStreak, setCorrectStreak] = useState(0); // Consecutive correct answers for energy bonus
+  const [showEnergyGain, setShowEnergyGain] = useState(false);
+  const [showEnergyLoss, setShowEnergyLoss] = useState(false);
 
   const MAX_ATTEMPTS = 3;
+  const STREAK_FOR_ENERGY = 3; // Get 1 energy back every 3 correct answers
 
   // Parse values
   const languages = languagesParam.split(",");
   const difficulty = difficultyParam;
   const level = parseInt(levelParam);
+
+  // Fetch initial energy
+  useEffect(() => {
+    const fetchEnergy = async () => {
+      if (!session) return;
+      try {
+        const res = await fetch('/api/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setEnergy(data.energy);
+        }
+      } catch (error) {
+        console.error('Failed to fetch energy:', error);
+      }
+    };
+    fetchEnergy();
+  }, [session]);
+
+  // Update stats on server
+  const updateStats = async (action: string, result?: string, streakBonus?: number) => {
+    if (!session) return;
+    try {
+      const res = await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, result, streakBonus }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEnergy(data.energy);
+      }
+    } catch (error) {
+      console.error('Failed to update stats:', error);
+    }
+  };
 
   // Generate snippet with Gemini on mount - only once
   useEffect(() => {
@@ -264,8 +306,32 @@ function PracticeContent() {
     if (result.result === "Correct") {
       setCorrectCount((c) => c + 1);
       setStreak((s) => s + 1);
+      
+      // Track consecutive correct answers for energy bonus
+      const newCorrectStreak = correctStreak + 1;
+      setCorrectStreak(newCorrectStreak);
+      
+      // Award energy every STREAK_FOR_ENERGY correct answers
+      if (newCorrectStreak >= STREAK_FOR_ENERGY) {
+        setCorrectStreak(0); // Reset streak counter
+        setShowEnergyGain(true);
+        setTimeout(() => setShowEnergyGain(false), 2000);
+        await updateStats('complete_exercise', 'correct', 1);
+      } else {
+        await updateStats('complete_exercise', 'correct', 0);
+      }
     } else {
       setStreak(0);
+      setCorrectStreak(0); // Reset on wrong answer
+      
+      // Lose energy on incorrect answer (first attempt only)
+      if (result.result === "Incorrect" && attemptNumber === 1 && !isPro) {
+        setShowEnergyLoss(true);
+        setTimeout(() => setShowEnergyLoss(false), 2000);
+        await updateStats('use_energy');
+      }
+      
+      await updateStats('complete_exercise', result.result === "Partially Correct" ? 'partial' : 'incorrect', 0);
     }
 
     setIsLoading(false);
@@ -365,6 +431,25 @@ function PracticeContent() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a]">
+      {/* Energy Gain/Loss Animation */}
+      {showEnergyGain && (
+        <div className="fixed top-20 right-4 z-50 animate-bounce">
+          <div className="bg-[#00ff87] text-black px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <span className="text-xl">❤️</span>
+            <span className="font-bold">+1 Energy!</span>
+            <span className="text-sm opacity-80">(3 correct streak)</span>
+          </div>
+        </div>
+      )}
+      {showEnergyLoss && (
+        <div className="fixed top-20 right-4 z-50 animate-pulse">
+          <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <span className="text-xl">💔</span>
+            <span className="font-bold">-1 Energy</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-[#222] bg-[#0a0a0a] sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -384,8 +469,25 @@ function PracticeContent() {
             </div>
           </div>
           
-          {/* Progress */}
+          {/* Progress & Energy */}
           <div className="flex items-center gap-4">
+            {/* Energy Display */}
+            {session && !isPro && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-[#111] border border-[#222] rounded">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className={`text-sm ${i < energy ? '' : 'opacity-30'}`}>
+                    {i < energy ? '❤️' : '🖤'}
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Correct Streak Progress */}
+            {correctStreak > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <span>🎯</span>
+                <span>{correctStreak}/{STREAK_FOR_ENERGY}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-gray-600">Progress</span>
               <div className="flex gap-0.5">
