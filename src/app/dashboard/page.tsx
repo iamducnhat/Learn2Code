@@ -190,7 +190,7 @@ export default function DashboardPage() {
           
           {!isPro && (
             <div className="text-xs text-gray-600">
-              💡 Lose a heart for wrong answers. Earn hearts with 3-correct streaks!
+              💡 Each exercise costs 1 heart. Earn hearts back with 3-correct streaks!
             </div>
           )}
         </div>

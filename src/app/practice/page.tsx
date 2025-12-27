@@ -205,7 +205,7 @@ function PracticeContent() {
   const [energy, setEnergy] = useState<number>(5);
   const [correctStreak, setCorrectStreak] = useState(0); // Consecutive correct answers for energy bonus
   const [showEnergyGain, setShowEnergyGain] = useState(false);
-  const [showEnergyLoss, setShowEnergyLoss] = useState(false);
+  const [energyConsumed, setEnergyConsumed] = useState(false); // Track if energy was consumed for this exercise
 
   const MAX_ATTEMPTS = 3;
   const STREAK_FOR_ENERGY = 3; // Get 1 energy back every 3 correct answers
@@ -244,10 +244,24 @@ function PracticeContent() {
       if (res.ok) {
         const data = await res.json();
         setEnergy(data.energy);
+        return data;
       }
     } catch (error) {
       console.error('Failed to update stats:', error);
     }
+    return null;
+  };
+
+  // Consume energy when starting exercise
+  const consumeEnergyOnStart = async () => {
+    if (!session || isPro || energyConsumed) return true; // Pro users or already consumed
+    
+    const data = await updateStats('use_energy');
+    if (data) {
+      setEnergyConsumed(true);
+      return data.energy >= 0; // Allow if still has energy
+    }
+    return true;
   };
 
   // Generate snippet with Gemini on mount - only once
@@ -258,6 +272,11 @@ function PracticeContent() {
     const generateSnippet = async () => {
       setIsGenerating(true);
       setGenerationError(null);
+      
+      // Consume energy when starting exercise (for logged-in free users)
+      if (session && !isPro) {
+        await consumeEnergyOnStart();
+      }
       
       try {
         const response = await fetch('/api/generate', {
@@ -324,13 +343,7 @@ function PracticeContent() {
       setStreak(0);
       setCorrectStreak(0); // Reset on wrong answer
       
-      // Lose energy on incorrect answer (first attempt only)
-      if (result.result === "Incorrect" && attemptNumber === 1 && !isPro) {
-        setShowEnergyLoss(true);
-        setTimeout(() => setShowEnergyLoss(false), 2000);
-        await updateStats('use_energy');
-      }
-      
+      // Just update stats, no energy drain on wrong answers
       await updateStats('complete_exercise', result.result === "Partially Correct" ? 'partial' : 'incorrect', 0);
     }
 
@@ -438,14 +451,6 @@ function PracticeContent() {
             <span className="text-xl">❤️</span>
             <span className="font-bold">+1 Energy!</span>
             <span className="text-sm opacity-80">(3 correct streak)</span>
-          </div>
-        </div>
-      )}
-      {showEnergyLoss && (
-        <div className="fixed top-20 right-4 z-50 animate-pulse">
-          <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-            <span className="text-xl">💔</span>
-            <span className="font-bold">-1 Energy</span>
           </div>
         </div>
       )}
