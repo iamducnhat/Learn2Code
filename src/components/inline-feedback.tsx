@@ -17,6 +17,7 @@ interface InlineFeedbackProps {
   onRetry: () => void;
   onContinue: () => void;
   isPro?: boolean;
+  userExplanation?: string;
 }
 
 export function InlineFeedback({
@@ -33,12 +34,68 @@ export function InlineFeedback({
   onRetry,
   onContinue,
   isPro = false,
+  userExplanation = "",
 }: InlineFeedbackProps) {
   const [showReference, setShowReference] = React.useState(
     result === "Correct" || attemptNumber >= maxAttempts
   );
 
   const canRetry = result !== "Correct" && attemptNumber < maxAttempts;
+
+  // Highlight user's answer - green for matched concepts, red for areas that might need improvement
+  const highlightUserAnswer = (
+    text: string, 
+    matched: string[], 
+    missing: string[],
+    answerResult: "Correct" | "Partially Correct" | "Incorrect"
+  ): React.ReactNode => {
+    if (answerResult === "Correct") {
+      // For correct answers, show in green
+      return <span className="text-[#00ff87]">{text}</span>;
+    }
+
+    // Create a map of words that match concepts
+    const words = text.split(/\s+/);
+    const matchedLower = matched.map(c => c.toLowerCase());
+    const missingLower = missing.map(c => c.toLowerCase());
+    
+    // Build highlighted text
+    const result: React.ReactNode[] = [];
+    let currentIndex = 0;
+    
+    words.forEach((word, idx) => {
+      const wordLower = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isMatched = matchedLower.some(concept => 
+        concept.includes(wordLower) || wordLower.includes(concept.split(' ')[0])
+      );
+      
+      if (idx > 0) {
+        result.push(' ');
+      }
+      
+      if (isMatched) {
+        result.push(
+          <span key={idx} className="text-[#00ff87] font-medium">{word}</span>
+        );
+      } else {
+        // For incorrect/partial answers, highlight non-matching significant words
+        const isSignificant = wordLower.length > 3 && 
+          !['this', 'that', 'with', 'from', 'have', 'will', 'been', 'were', 'they', 'their', 'what', 'when', 'which', 'there', 'would', 'could', 'should', 'about', 'into', 'than', 'then', 'them', 'these', 'some', 'other'].includes(wordLower);
+        
+        if (answerResult === "Incorrect" && isSignificant) {
+          result.push(
+            <span key={idx} className="text-red-400">{word}</span>
+          );
+        } else {
+          result.push(
+            <span key={idx} className="text-gray-400">{word}</span>
+          );
+        }
+      }
+    });
+    
+    return <>{result}</>;
+  };
 
   // Extract key concepts from reference for free users
   const extractKeyConcepts = (text: string): string[] => {
@@ -126,6 +183,16 @@ export function InlineFeedback({
             {confidenceScore}% confidence
           </span>
         </div>
+
+        {/* User's Answer with Highlighting */}
+        {userExplanation && (
+          <div className="mb-3 p-3 bg-black/40 border border-[#333]">
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Your answer:</div>
+            <p className="text-sm font-sans leading-relaxed">
+              {highlightUserAnswer(userExplanation, matchedConcepts, missingConcepts, result)}
+            </p>
+          </div>
+        )}
 
         {/* Reason */}
         <p className="text-sm text-gray-300 mb-3 font-sans">

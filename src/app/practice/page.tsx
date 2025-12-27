@@ -414,6 +414,7 @@ function PracticeContent() {
                           onRetry={handleRetry}
                           onContinue={handleContinue}
                           isPro={isPro}
+                          userExplanation={userExplanation}
                         />
                       )}
                     </React.Fragment>
