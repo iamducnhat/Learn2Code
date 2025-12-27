@@ -2,35 +2,43 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { UserMenu } from "./user-menu";
 import { useState } from "react";
 
 const navLinks = [
-  { href: "/learn", label: "Practice" },
-  { href: "/theory", label: "Theory" },
-  { href: "/docs/languages", label: "Languages" },
-  { href: "/docs/algorithms", label: "Algorithms" },
+  { href: "/dashboard", label: "Dashboard", authRequired: true },
+  { href: "/learn", label: "Practice", authRequired: false },
+  { href: "/theory", label: "Theory", authRequired: false },
+  { href: "/docs/languages", label: "Languages", authRequired: false },
+  { href: "/docs/algorithms", label: "Algorithms", authRequired: false },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Don't show on home page
   if (pathname === "/") return null;
+
+  // Filter nav links based on auth status
+  const filteredLinks = navLinks.filter(link => 
+    !link.authRequired || (link.authRequired && session)
+  );
 
   return (
     <nav className="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#222]">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
-          <Link href="/" className="font-bold text-white">
+          <Link href={session ? "/dashboard" : "/"} className="font-bold text-white">
             <span className="border-b border-[#00ff87] pb-0.5">L2C</span>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
+            {filteredLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -70,7 +78,7 @@ export function Navigation() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-[#222] py-4">
-            {navLinks.map((link) => (
+            {filteredLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

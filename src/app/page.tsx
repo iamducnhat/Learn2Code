@@ -1,8 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [status, router]);
+
+  // Show loading while checking auth
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-[#00ff87] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Don't render if authenticated (will redirect)
+  if (status === "authenticated") {
+    return null;
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4">
       {/* Hero Section */}

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { InlineCodeViewer } from "@/components/inline-code-viewer";
 import { InlineFeedback } from "@/components/inline-feedback";
+import { TheoryPanel, topicTheoryMap, getRelevantTopic } from "@/components/theory-panel";
 
 // Teaching unit interface (now comes from Gemini API)
 interface TeachingUnit {
@@ -271,6 +272,10 @@ function PracticeContent() {
   // Get current unit safely
   const safeCurrentUnit = units[currentUnitIndex] || units[0];
 
+  // Get relevant theory topic based on difficulty and level
+  const relevantTopicId = getRelevantTopic(difficulty, level);
+  const relevantTheory = topicTheoryMap[relevantTopicId];
+
   return (
     <main className="min-h-screen bg-[#0a0a0a]">
       {/* Header */}
@@ -323,6 +328,17 @@ function PracticeContent() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto py-8">
+        {/* Theory Panel - Shows relevant theory for this exercise */}
+        {relevantTheory && (
+          <TheoryPanel
+            topic={relevantTopicId}
+            title={relevantTheory.title}
+            icon={relevantTheory.icon}
+            sections={relevantTheory.sections}
+            defaultExpanded={currentUnitIndex === 0} // Auto-expand only on first unit
+          />
+        )}
+
         {/* Code Container */}
         <div className="border border-[#222] bg-[#0d0d0d]">
           {/* File Tab */}
